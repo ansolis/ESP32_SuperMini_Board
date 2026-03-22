@@ -142,8 +142,6 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         print_ap_rssi();
         // Initialize SNTP for time synchronization
         initialize_sntp();
-        // Print current time (may not be set yet)
-        print_current_time();
     }
 }
 
