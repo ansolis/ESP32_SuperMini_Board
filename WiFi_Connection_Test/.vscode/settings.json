@@ -1,9 +1,9 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
   "idf.openOcdConfigs": [
-    "board/esp32-wrover-kit-3.3v.cfg"
+    "board/esp32s3-builtin.cfg"
   ],
-  "idf.portWin": "detect",
+  "idf.portWin": "COM3",
   "idf.currentSetup": "C:\\Espressif\\SDK\\v5.4.1\\esp-idf",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32s3"
@@ -13,5 +13,6 @@
     "--background-index",
     "--query-driver=**",
     "--compile-commands-dir=c:\\Repos\\ESP32_SuperMini\\fast_scan\\build"
-  ]
+  ],
+  "idf.flashType": "JTAG"
 }
