@@ -27,6 +27,7 @@
 #include "esp_log.h"
 #include "esp_event.h"
 #include "nvs_flash.h"
+#include "sntp_time.h"
 
 /* Set the SSID and Password via project configuration, or can set directly here */
 #define DEFAULT_SSID CONFIG_EXAMPLE_WIFI_SSID
@@ -125,7 +126,6 @@ static void trigger_scan_and_show_results(void)
     print_scan_results();
 }
 
-
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
@@ -140,6 +140,10 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
         // Print RSSI after getting IP
         print_ap_rssi();
+        // Initialize SNTP for time synchronization
+        initialize_sntp();
+        // Print current time (may not be set yet)
+        print_current_time();
     }
 }
 
