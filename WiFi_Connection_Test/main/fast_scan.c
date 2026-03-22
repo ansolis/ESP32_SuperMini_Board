@@ -73,11 +73,53 @@
 #endif /*CONFIG_EXAMPLE_FAST_SCAN_THRESHOLD*/
 
 static const char *TAG = "scan";
+static void print_scan_results(void)
+{
+    uint16_t ap_num = 0;
+    esp_wifi_scan_get_ap_num(&ap_num);
+    if (ap_num == 0) {
+        ESP_LOGI(TAG, "No APs found in scan results.");
+        return;
+    }
+
+    wifi_ap_record_t *ap_records = calloc(ap_num, sizeof(wifi_ap_record_t));
+    if (ap_records == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate memory for AP records");
+        return;
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_scan_get_ap_records(&ap_num, ap_records));
+    ESP_LOGI(TAG, "Found %d APs:", ap_num);
+    for (int i = 0; i < ap_num; i++) {
+        ESP_LOGI(TAG, "%d: SSID=%s, RSSI=%d dBm, authmode=%d, channel=%d", i + 1,
+                 ap_records[i].ssid, ap_records[i].rssi,
+                 ap_records[i].authmode, ap_records[i].primary);
+    }
+
+    free(ap_records);
+}
+
+static void trigger_scan_and_show_results(void)
+{
+    wifi_scan_config_t scan_config = {
+        .ssid = NULL,
+        .bssid = NULL,
+        .channel = 0,
+        .show_hidden = true
+    };
+
+    ESP_LOGI(TAG, "Starting Wi-Fi scan for all networks");
+    ESP_ERROR_CHECK(esp_wifi_scan_start(&scan_config, true));
+    print_scan_results();
+}
+
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        // Wi-Fi started, scan current RSSI/AP list before connecting
+        trigger_scan_and_show_results();
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         esp_wifi_connect();
