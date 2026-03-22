@@ -73,6 +73,18 @@
 #endif /*CONFIG_EXAMPLE_FAST_SCAN_THRESHOLD*/
 
 static const char *TAG = "scan";
+
+static void print_ap_rssi(void)
+{
+    wifi_ap_record_t ap_info;
+    esp_err_t err = esp_wifi_sta_get_ap_info(&ap_info);
+    if (err == ESP_OK) {
+        ESP_LOGI(TAG, "Connected to AP: %s, RSSI: %d dBm", ap_info.ssid, ap_info.rssi);
+    } else {
+        ESP_LOGE(TAG, "Failed to get AP info: %s", esp_err_to_name(err));
+    }
+}
+
 static void print_scan_results(void)
 {
     uint16_t ap_num = 0;
@@ -126,6 +138,8 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+        // Print RSSI after getting IP
+        print_ap_rssi();
     }
 }
 
