@@ -28,6 +28,7 @@
 #include "esp_event.h"
 #include "nvs_flash.h"
 #include "sntp_time.h"
+#include "weather.h"
 
 /* Set the SSID and Password via project configuration, or can set directly here */
 #define DEFAULT_SSID CONFIG_EXAMPLE_WIFI_SSID
@@ -142,6 +143,9 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         print_ap_rssi();
         // Initialize SNTP for time synchronization
         initialize_sntp();
+
+        // Get weather info
+        fetch_seattle_weather();
     }
 }
 
