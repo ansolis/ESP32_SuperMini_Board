@@ -5,9 +5,15 @@
 #include "cJSON.h"
 #include "esp_log.h"
 #include "string.h"
+#include <stdint.h>
+#include <netdb.h>
+#include "esp_rom_sys.h"
+#include "esp_netif.h"
+#include "esp_crt_bundle.h"
+
 static const char *TAG = "weather";
 
-#define OPENWEATHER_API_URL "http://api.openweathermap.org"
+#define OPENWEATHER_API_URL "https://api.openweathermap.org"
 #define SEATTLE_CITY "Seattle,US"
 
 // Structure to hold parsed weather data
@@ -84,32 +90,47 @@ static esp_err_t fetch_weather(const char *city)
         "%s/data/2.5/weather?q=%s&appid=%s&units=metric",
         OPENWEATHER_API_URL, city, OPENWEATHER_API_KEY);
 
-    ESP_LOGI(TAG, "API Request URL: %s", request_url);
-
     esp_http_client_config_t config = {
         .url = request_url,
-        .transport_type = HTTP_TRANSPORT_OVER_TCP,
+        .transport_type = HTTP_TRANSPORT_OVER_SSL,
         .timeout_ms = 10000,
+        .crt_bundle_attach = esp_crt_bundle_attach,  // use built-in cert bundle
     };
+
+    ESP_LOGD(TAG, "Free heap: %lu, Min free heap: %lu",
+        esp_get_free_heap_size(),
+        esp_get_minimum_free_heap_size());
 
     esp_http_client_handle_t client = esp_http_client_init(&config);
     if (client == NULL) {
         ESP_LOGE(TAG, "Failed to initialize HTTP client");
         return ESP_FAIL;
-}
+    }
+    ESP_LOGI(TAG, "HTTP client initialized successfully for TLS/SSL");
 
+    ESP_LOGI(TAG, "Attempting to open TLS/SSL connection...");
     esp_http_client_set_header(client, "Accept-Encoding", "identity");
-
     esp_err_t err = esp_http_client_open(client, 0);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to open connection: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to open TLS/SSL connection: %s (0x%04X)", esp_err_to_name(err), err);
+
+        // Additional debugging for common issues
+        if (err == ESP_FAIL) {
+            ESP_LOGE(TAG, "General TLS handshake failure - possible causes:");
+            ESP_LOGE(TAG, "1. Certificate doesn't match the server");
+            ESP_LOGE(TAG, "2. Server name doesn't match certificate");
+            ESP_LOGE(TAG, "3. TLS version mismatch");
+            ESP_LOGE(TAG, "4. Network connectivity issues");
+        }
+
         esp_http_client_cleanup(client);
         return err;
     }
-
+    ESP_LOGI(TAG, "TLS/SSL connection established successfully");
+    ESP_LOGI(TAG, "Fetching headers from HTTPS server...");
     int64_t content_length = esp_http_client_fetch_headers(client);
     int status_code = esp_http_client_get_status_code(client);
-    ESP_LOGI(TAG, "Status: %d, Content-Length: %lld", status_code, content_length);
+    ESP_LOGI(TAG, "HTTPS Response - Status: %d, Content-Length: %lld", status_code, content_length);
 
     if (status_code == 200 && content_length > 0) {
         char *response = malloc(content_length + 1);
@@ -142,5 +163,11 @@ static esp_err_t fetch_weather(const char *city)
 
 esp_err_t fetch_seattle_weather(void)
 {
+    // Check if a DNS server is available
+    esp_netif_t *netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+    esp_netif_dns_info_t dns;
+    esp_netif_get_dns_info(netif, ESP_NETIF_DNS_MAIN, &dns);
+    ESP_LOGD(TAG, "DNS server: " IPSTR, IP2STR(&dns.ip.u_addr.ip4));
+
     return fetch_weather(SEATTLE_CITY);
 }

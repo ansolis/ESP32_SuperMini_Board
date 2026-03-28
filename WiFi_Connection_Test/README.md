@@ -98,6 +98,11 @@ For any technical queries, please open an [issue](https://github.com/espressif/e
 
 
 ## Dev Notes
+Download the Root CA certificate for api.openweathermap.org:
+```bash
+openssl s_client -showcerts -connect api.openweathermap.org:443 </dev/null 2>/dev/null | openssl x509 -outform PEM > openweather_root_ca.pem
+```
+Output: openweather_root_ca.pem
 
 This works:
 ```
