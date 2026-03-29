@@ -179,6 +179,7 @@ static esp_err_t fetch_weather(const char *city)
             ESP_LOGE(TAG, "4. Network connectivity issues");
         }
 
+        esp_http_client_close(client);
         esp_http_client_cleanup(client);
         return err;
     }
@@ -190,8 +191,9 @@ static esp_err_t fetch_weather(const char *city)
 
     if (status_code == 200 && content_length > 0) {
         char *response = malloc(content_length + 1);
-        if (!response) {
+        if (response == NULL) {
             ESP_LOGE(TAG, "Failed to allocate memory for response");
+            esp_http_client_close(client);
             esp_http_client_cleanup(client);
             return ESP_ERR_NO_MEM;
         }
