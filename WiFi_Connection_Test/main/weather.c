@@ -11,6 +11,14 @@
 #include "esp_netif.h"
 #include "esp_crt_bundle.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "lodepng.h"
+#ifdef __cplusplus
+}
+#endif
+
 static const char *TAG = "weather";
 
 #define OPENWEATHER_API_URL "https://api.openweathermap.org"
@@ -67,6 +75,110 @@ static void print_json(const cJSON *item, int depth, long timezone_offset)
         child = child->next;
     }
 }
+
+static void print_icon_ascii(const uint8_t *pixels, unsigned width, unsigned height)
+{
+    char line[26] = {0};  // 25 chars + null terminator
+
+    for (unsigned y = 0; y < height; y += 2) {       // skip every other row
+        int col = 0;
+        for (unsigned x = 0; x < width; x += 2) {   // skip every other column
+            unsigned idx = (y * width + x) * 4;      // RGBA = 4 bytes per pixel
+            uint8_t r = pixels[idx];
+            uint8_t g = pixels[idx + 1];
+            uint8_t b = pixels[idx + 2];
+            uint8_t a = pixels[idx + 3];
+
+            // Standard luminance formula
+            uint8_t luminance = (r * 299 + g * 587 + b * 114) / 1000;
+
+            // Transparent or dark = space, light = asterisk
+            // line[col++] = (a < 128 || luminance < 128) ? ' ' : '*';
+            // Use 3 density levels:
+            //  - transparent = space,
+            //  - bright = "*"
+            //  - mid-tone = "."
+            line[col++] = (a < 128) ? ' ' : (luminance > 200) ? '*' : '.';
+        }
+        line[col] = '\0';
+        ESP_LOGI(TAG, "|%s|", line);  // pipes make whitespace-only rows visible
+    }
+}
+
+static esp_err_t download_weather_icon(const char *icon_code)
+{
+    char icon_url[128];
+    snprintf(icon_url, sizeof(icon_url),
+        // "https://openweathermap.org/img/wn/%s.png", icon_code);
+        "http://openweathermap.org/img/wn/%s.png", icon_code);
+    ESP_LOGI(TAG, "Downloading icon from: %s", icon_url);
+
+    esp_http_client_config_t config = {
+        .url = icon_url,
+        .transport_type = HTTP_TRANSPORT_OVER_SSL,
+        .timeout_ms = 10000,
+        .crt_bundle_attach = esp_crt_bundle_attach,
+    };
+
+    esp_http_client_handle_t client = esp_http_client_init(&config);
+    if (!client) {
+        ESP_LOGE(TAG, "Failed to init HTTP client for icon");
+        return ESP_FAIL;
+    }
+
+    esp_err_t err = esp_http_client_open(client, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to open icon connection: %s", esp_err_to_name(err));
+        esp_http_client_cleanup(client);
+        return err;
+    }
+
+    int64_t content_length = esp_http_client_fetch_headers(client);
+    int status_code = esp_http_client_get_status_code(client);
+    ESP_LOGI(TAG, "Icon response - Status: %d, Size: %lld bytes", status_code, content_length);
+
+    if (status_code != 200 || content_length <= 0) {
+        ESP_LOGE(TAG, "Unexpected icon response, status: %d", status_code);
+        esp_http_client_close(client);
+        esp_http_client_cleanup(client);
+        return ESP_FAIL;
+    }
+
+    // Download raw PNG bytes
+    uint8_t *png_data = malloc(content_length);
+    if (!png_data) {
+        ESP_LOGE(TAG, "Failed to allocate %lld bytes for PNG", content_length);
+        esp_http_client_close(client);
+        esp_http_client_cleanup(client);
+        return ESP_ERR_NO_MEM;
+    }
+
+    int read_len = esp_http_client_read(client, (char *)png_data, content_length);
+    ESP_LOGI(TAG, "Read %d bytes of PNG data", read_len);
+
+    esp_http_client_close(client);
+    esp_http_client_cleanup(client);
+
+    // Decode PNG to RGBA pixels
+    uint8_t *pixels = NULL;
+    unsigned width, height;
+    unsigned decode_err = lodepng_decode32(&pixels, &width, &height, png_data, read_len);
+    free(png_data);  // done with raw PNG bytes
+
+    if (decode_err) {
+        ESP_LOGE(TAG, "PNG decode failed: %s", lodepng_error_text(decode_err));
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "Icon decoded: %ux%u px, rendering as %ux%u ASCII art",
+        width, height, width / 2, height / 2);
+
+    print_icon_ascii(pixels, width, height);
+    free(pixels);
+
+    return ESP_OK;
+}
+
 
 // Function to parse JSON response
 static esp_err_t parse_weather_data(const char *json_response, weather_data_t *weather)
@@ -126,6 +238,27 @@ static esp_err_t parse_weather_data(const char *json_response, weather_data_t *w
         }
         ESP_LOGD(TAG, "Timezone offset: %ld seconds", timezone_offset);
         print_json(root, 0, timezone_offset);
+
+        // Download and print the weather icon to console (for now)
+        // cJSON *weather_array = cJSON_GetObjectItemCaseSensitive(root, "weather");
+        // cJSON *weather_obj = cJSON_GetArrayItem(weather_array, 0);
+        cJSON *icon_obj = cJSON_GetObjectItemCaseSensitive(weather_obj, "icon");
+        if (icon_obj && cJSON_IsString(icon_obj)) {
+            ESP_LOGI(TAG, "Calling download_weather_icon()");
+            download_weather_icon(icon_obj->valuestring);
+        } else {
+            ESP_LOGE(TAG, "download_weather_icon() was not called");
+            if (icon_obj) {
+                ESP_LOGI(TAG, "icon_obj is not NULL");
+            } else {
+                ESP_LOGE(TAG, "icon_obj is NULL");
+            }
+            if (cJSON_IsString(icon_obj)) {
+                ESP_LOGI(TAG, "cJSON_IsString(icon_obj) is true");
+            } else {
+                ESP_LOGE(TAG, "cJSON_IsString(icon_obj) is NULL");
+            }
+        }
     } else {
         ESP_LOGE(TAG, "Failed to parse weather data from JSON");
         cJSON_Delete(root);
