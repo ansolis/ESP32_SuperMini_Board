@@ -98,7 +98,9 @@ For any technical queries, please open an [issue](https://github.com/espressif/e
 
 
 ## Dev Notes
-Download the Root CA certificate for api.openweathermap.org:
+
+### Download the Root CA certificate for api.openweathermap.org:
+
 ```bash
 openssl s_client -showcerts -connect api.openweathermap.org:443 </dev/null 2>/dev/null | openssl x509 -outform PEM > openweather_root_ca.pem
 ```
@@ -111,4 +113,22 @@ curl "https://api.openweathermap.org/data/2.5/weather?q=Seattle,US&appid=<api_ke
 Output:
 ```
 {"coord":{"lon":-122.3321,"lat":47.6062},"weather":[{"id":804,"main":"Clouds","description":"overcast clouds","icon":"04n"}],"base":"stations","main":{"temp":6.6,"feels_like":5.91,"temp_min":6.6,"temp_max":6.6,"pressure":1014,"humidity":83,"sea_level":1014,"grnd_level":1006},"visibility":10000,"wind":{"speed":1.39,"deg":154,"gust":2.28},"clouds":{"all":100},"dt":1774335922,"sys":{"country":"US","sunrise":1774361033,"sunset":1774405625},"timezone":-25200,"id":5809844,"name":"Seattle","cod":200}
+```
+
+### Download weather icons given weather icon code
+
+Download large "2x" icons 100x100 pixels:
+```
+curl -o weather_icon.png "https://openweathermap.org/img/wn/04d@2x.png"
+```
+Replace 04d with whatever icon code the API returns.
+
+For the standard 50x50px version:
+```
+curl -o weather_icon.png "https://openweathermap.org/img/wn/04d.png"
+```
+
+To view it immediately on Windows you can chain it with the default image viewer:
+```
+bashcurl -o weather_icon.png "https://openweathermap.org/img/wn/04d@2x.png" && start weather_icon.png
 ```

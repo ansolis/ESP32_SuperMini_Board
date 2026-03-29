@@ -24,6 +24,41 @@ typedef struct {
     char description[50];
 } weather_data_t;
 
+// Prints all fields of the JSON object as key:value pairs recursively
+static void print_json(const cJSON *item, int depth)
+{
+    char indent[64] = {0};
+    for (int i = 0; i < depth * 2 && i < (int)sizeof(indent) - 1; i++)
+        indent[i] = ' ';
+
+    cJSON *child = item->child;
+    while (child) {
+        const char *key = child->string ? child->string : "[array element]";
+
+        if (cJSON_IsObject(child)) {
+            ESP_LOGI(TAG, "%s%s:", indent, key);
+            print_json(child, depth + 1);
+        } else if (cJSON_IsArray(child)) {
+            ESP_LOGI(TAG, "%s%s:", indent, key);
+            print_json(child, depth + 1);
+        } else if (cJSON_IsString(child)) {
+            ESP_LOGI(TAG, "%s%s: %s", indent, key, child->valuestring);
+        } else if (cJSON_IsNumber(child)) {
+            if (child->valuedouble == (long long)child->valuedouble) {
+                // Print as integer if it has no fractional part
+                ESP_LOGI(TAG, "%s%s: %lld", indent, key, (long long)child->valuedouble);
+            } else {
+                ESP_LOGI(TAG, "%s%s: %.2f", indent, key, child->valuedouble);
+            }
+        } else if (cJSON_IsBool(child)) {
+            ESP_LOGI(TAG, "%s%s: %s", indent, key, cJSON_IsTrue(child) ? "true" : "false");
+        } else if (cJSON_IsNull(child)) {
+            ESP_LOGI(TAG, "%s%s: null", indent, key);
+        }
+        child = child->next;
+    }
+}
+
 // Function to parse JSON response
 static esp_err_t parse_weather_data(const char *json_response, weather_data_t *weather)
 {
@@ -71,9 +106,11 @@ static esp_err_t parse_weather_data(const char *json_response, weather_data_t *w
         }
         ESP_LOGI(TAG, "Weather in %s, %s: %.1f°C, %s",
                 weather->city, weather->country, weather->temperature, weather->description);
+
+        print_json(root, 0);
     } else {
         ESP_LOGE(TAG, "Failed to parse weather data from JSON");
-    cJSON_Delete(root);
+        cJSON_Delete(root);
         return ESP_FAIL;
     }
 
