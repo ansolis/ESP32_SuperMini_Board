@@ -25,7 +25,7 @@ typedef struct {
 } weather_data_t;
 
 // Prints all fields of the JSON object as key:value pairs recursively
-static void print_json(const cJSON *item, int depth)
+static void print_json(const cJSON *item, int depth, long timezone_offset)
 {
     char indent[64] = {0};
     for (int i = 0; i < depth * 2 && i < (int)sizeof(indent) - 1; i++)
@@ -37,16 +37,25 @@ static void print_json(const cJSON *item, int depth)
 
         if (cJSON_IsObject(child)) {
             ESP_LOGI(TAG, "%s%s:", indent, key);
-            print_json(child, depth + 1);
+            print_json(child, depth + 1, timezone_offset);
         } else if (cJSON_IsArray(child)) {
             ESP_LOGI(TAG, "%s%s:", indent, key);
-            print_json(child, depth + 1);
+            print_json(child, depth + 1, timezone_offset);
         } else if (cJSON_IsString(child)) {
             ESP_LOGI(TAG, "%s%s: %s", indent, key, child->valuestring);
         } else if (cJSON_IsNumber(child)) {
             if (child->valuedouble == (long long)child->valuedouble) {
-                // Print as integer if it has no fractional part
-                ESP_LOGI(TAG, "%s%s: %lld", indent, key, (long long)child->valuedouble);
+                // Check if this field is a timestamp
+                if (strcmp(key, "dt") == 0 || strcmp(key, "sunrise") == 0 || strcmp(key, "sunset") == 0) {
+                    time_t utc_time = (time_t)child->valuedouble;
+                    time_t local_time = utc_time + timezone_offset;
+                    struct tm *tm_info = gmtime(&local_time);
+                    char buf[32];
+                    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", tm_info);
+                    ESP_LOGI(TAG, "%s%s: %s", indent, key, buf);
+                } else {
+                    ESP_LOGI(TAG, "%s%s: %lld", indent, key, (long long)child->valuedouble);
+                }
             } else {
                 ESP_LOGI(TAG, "%s%s: %.2f", indent, key, child->valuedouble);
             }
@@ -107,7 +116,16 @@ static esp_err_t parse_weather_data(const char *json_response, weather_data_t *w
         ESP_LOGI(TAG, "Weather in %s, %s: %.1f°C, %s",
                 weather->city, weather->country, weather->temperature, weather->description);
 
-        print_json(root, 0);
+
+        // Extract timezone to ensure all time fields are printed
+        // for the current time zone for the given locale
+        cJSON *timezone = cJSON_GetObjectItemCaseSensitive(root, "timezone");
+        long timezone_offset = 0;
+        if (timezone && cJSON_IsNumber(timezone)) {
+            timezone_offset = (long)timezone->valuedouble;
+        }
+        ESP_LOGD(TAG, "Timezone offset: %ld seconds", timezone_offset);
+        print_json(root, 0, timezone_offset);
     } else {
         ESP_LOGE(TAG, "Failed to parse weather data from JSON");
         cJSON_Delete(root);
@@ -123,8 +141,9 @@ static esp_err_t fetch_weather(const char *city)
     ESP_LOGI(TAG, "Fetching weather for %s", city);
 
     static char request_url[256];
+    // Units can be "metric", "imperial" or "standard"
     snprintf(request_url, sizeof(request_url),
-        "%s/data/2.5/weather?q=%s&appid=%s&units=metric",
+        "%s/data/2.5/weather?q=%s&appid=%s&units=imperial",
         OPENWEATHER_API_URL, city, OPENWEATHER_API_KEY);
 
     esp_http_client_config_t config = {

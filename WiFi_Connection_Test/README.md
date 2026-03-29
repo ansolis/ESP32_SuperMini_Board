@@ -132,3 +132,37 @@ To view it immediately on Windows you can chain it with the default image viewer
 ```
 bashcurl -o weather_icon.png "https://openweathermap.org/img/wn/04d@2x.png" && start weather_icon.png
 ```
+
+### Weather field breakdown
+
+- **coord**
+  - `lon / lat` - decimal degrees, geographic coordinates of the city center
+- **weather**
+  - `id` - OpenWeatherMap condition code (804 = overcast clouds)
+  - `main` - broad weather category (Clouds, Rain, Snow, Clear, etc.)
+  - `description` - more specific condition within that category
+  - `icon` - icon code for their icon set, n suffix = nighttime, d = daytime
+- `base` - internal OWM field indicating the data source (stations = weather station network, not important for display)
+- **main**
+  - `temp` - °C for metric, °F for imperial, and °K for standard requested units
+  - `feels_like` - °C, perceived temperature accounting for wind and humidity
+  - `temp_min / temp_max` - °C, min/max observed within the current reporting area (not a forecast)
+  - `pressure` - hPa (hectopascals) regardelss of requested units, atmospheric pressure at sea level
+  - `humidity` - %, relative humidity
+  - `sea_level` - hPa, pressure at sea level (same as pressure when both present)
+  - `grnd_level` - hPa, pressure at ground level at the actual location elevation
+- `visibility` - metres, capped at 10000m (10km) regardless of requested units
+- **wind**
+  - `speed` - m/s for metric and mph for imperial units, wind speed
+  - `deg` - degrees, wind direction the wind is coming from (0°/360° = N, 90° = E, 180° = S, 270° = W)
+  - `gust` - peak gust speed
+- **clouds**
+  - `all` - %, cloud cover (0 = clear, 100 = fully overcast)
+- `dt` - UTC timestamp of when the weather data was measured
+- **sys**
+  - `country` - ISO 3166 country code
+  - `sunrise / sunset` - UTC timestamps.
+  - `timezone` - offset from UTC in seconds
+  - `id` - OWM's internal city ID
+  - `name` - city name as resolved by OWM
+  - `cod` - HTTP response code echoed in the JSON body (200 = OK)
