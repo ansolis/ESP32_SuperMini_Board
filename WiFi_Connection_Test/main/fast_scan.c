@@ -127,6 +127,7 @@ static void trigger_scan_and_show_results(void)
     print_scan_results();
 }
 
+// WiFi event handler
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
 {
@@ -139,13 +140,15 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+
         // Print RSSI after getting IP
         print_ap_rssi();
-        // Initialize SNTP for time synchronization
-        initialize_sntp();
 
         // Get weather info
         fetch_seattle_weather();
+
+        // Initialize SNTP for time synchronization
+        initialize_sntp();
     }
 }
 
