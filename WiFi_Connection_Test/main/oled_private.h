@@ -7,9 +7,6 @@
 
 #pragma once
 
-#include <stdint.h>
-#include "esp_err.h"
-
 // OLED command definitions (internal use only)
 #define OLED_CMD_SET_CONTRAST 0x81
 #define OLED_CMD_DISPLAY_ALL_ON_RESUME 0xA4
@@ -33,10 +30,6 @@
 #define OLED_CMD_SEG_REMAP 0xA0
 #define OLED_CMD_CHARGE_PUMP 0x8D
 #define OLED_CMD_EXTERNAL_VCC 0x1
-#define OLED_CMD_SWITCH_CAP_VCC 0x2
-
-// I2C configuration (internal use only)
-#define I2C_MASTER_SCL_IO 10       // GPIO pin for SCL
-#define I2C_MASTER_SDA_IO 11       // GPIO pin for SDA
-#define I2C_MASTER_FREQ_HZ 400000  // I2C clock frequency
-#define I2C_MASTER_PORT 0          // I2C port number
+#define OLED_CMD_CHARGE_PUMP_EN 0x14
+#define OLED_CMD_SET_COLUMN_ADDR 0x21
+#define OLED_CMD_SET_PAGE_ADDR   0x22

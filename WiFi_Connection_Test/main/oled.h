@@ -15,9 +15,6 @@
 #define OLED_WIDTH 128
 #define OLED_HEIGHT 64
 
-// I2C address for SSD1315 OLED (0x3C or 0x3D depending on SA0 pin)
-#define OLED_I2C_ADDRESS 0x3C
-
 // Function prototypes
 /**
  * @brief Initialize the OLED display
