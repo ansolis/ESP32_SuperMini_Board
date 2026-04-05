@@ -29,6 +29,7 @@
 #include "nvs_flash.h"
 #include "sntp_time.h"
 #include "weather.h"
+#include "oled.h"
 
 /* Set the SSID and Password via project configuration, or can set directly here */
 #define DEFAULT_SSID CONFIG_EXAMPLE_WIFI_SSID
@@ -195,6 +196,19 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK( ret );
+
+    // Initialize OLED display
+    ret = oled_init();
+    if (ret == ESP_OK) {
+        // Draw a 30x30 white square in the middle of the screen
+        uint8_t square_x = (OLED_WIDTH - 30) / 2;
+        uint8_t square_y = (OLED_HEIGHT - 30) / 2;
+        oled_draw_rectangle(square_x, square_y, 30, 30, 1);
+        oled_update_display();
+        ESP_LOGI("OLED", "Drawn 30x30 white square at (%d, %d)", square_x, square_y);
+    } else {
+        ESP_LOGE("OLED", "Failed to initialize OLED display: %s", esp_err_to_name(ret));
+    }
 
     fast_scan();
 }

@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "fast_scan.c" "sntp_time.c" "weather.c" "lodepng/lodepng.c"
+    SRCS "fast_scan.c" "sntp_time.c" "weather.c" "lodepng/lodepng.c" "oled.c"
     INCLUDE_DIRS "." "lodepng"
 )
 
