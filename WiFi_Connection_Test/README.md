@@ -11,9 +11,50 @@ Two scan methods are supported: fast scan and all channel scan.
 
 * `fast scan`: in this mode, scan finishes right after a matching AP is detected, even if channels are not completely scanned. You can set thresholds for signal strength, as well as select desired authentication modes provided by the AP's. The Wi-Fi driver will ignore AP's that fail to meet mentioned criteria.
 
-* `all channel scan`: scan will end only after all channels are scanned; the Wi-Fi driver will store 4 of the fully matching AP's. Sort methods for AP's include rssi and authmode. After the scan, the Wi-Fi driver selects the AP that fits best based on the sort.
+* `all channel scan`: scan will end only after all channels are scanned; the Wi-Fi driver will store 4 of the fully matching AP's. Sort methods for AP's include rssi and authmode. After the scan, the Wi-Fi driver selects the AP that fits best based on the sort. After the scan, the Wi-Fi driver will try to connect. Because it needs to to allocate precious dynamic memory to store matching AP's, and, most of the cases, connect to the AP with the strongest reception, it does not need to record all the AP's matched. The number of matches stored is limited to 4 in order to limit dynamic memory usage. Among the 4 matches,  AP's are allowed to carry the same SSID name and all possible authentication modes - Open, WEP, WPA and WPA2.
 
-After the scan, the Wi-Fi driver will try to connect. Because it needs to to allocate precious dynamic memory to store matching AP's, and, most of the cases, connect to the AP with the strongest reception, it does not need to record all the AP's matched. The number of matches stored is limited to 4 in order to limit dynamic memory usage. Among the 4 matches,  AP's are allowed to carry the same SSID name and all possible authentication modes - Open, WEP, WPA and WPA2.
+## Memory Optimization Notes
+
+This project has been configured with a custom partition table to address memory constraints:
+
+### Partition Table Configuration
+- **Custom Partition Table**: `partitions.csv` expands the app partition from 1MB to 3MB
+- **Original Issue**: Binary size (~997 KB) was nearly filling the default 1MB factory app partition
+- **Solution**: Factory app partition increased to 3MB (0x300000) at offset 0x10000
+
+### Current Partition Layout
+```
+nvs,      data, nvs,     0x9000,   0x6000,
+phy_init, data, phy,     0xf000,   0x1000,
+factory,  app,  factory, 0x10000,  0x300000,
+```
+
+### Future Optimization Opportunities
+
+For further memory reduction, consider these additional optimizations:
+
+1. **IRAM Optimization**:
+   - Current IRAM usage is at 99.99% (critical)
+   - Review functions marked with `IRAM_ATTR` - remove attribute if not truly needed
+   - Consider disabling WiFi IRAM optimizations:
+     ```
+     CONFIG_ESP_WIFI_IRAM_OPT=n
+     CONFIG_ESP_WIFI_RX_IRAM_OPT=n
+     ```
+
+2. **Code Size Optimization**:
+   - Enable size optimization: `CONFIG_COMPILER_OPTIMIZATION_SIZE=y`
+   - Reduce mbedTLS buffer sizes: `CONFIG_MBEDTLS_SSL_MAX_CONTENT_LEN=4096`
+
+3. **Data Storage Optimization**:
+   - Review large const data in .rodata section (currently 215 KB)
+   - Consider compressing or storing large assets in external storage
+   - Use flash-based storage for large lookup tables instead of RAM
+
+4. **Component-Specific Optimizations**:
+   - Review WiFi, HTTP client, and mbedTLS configurations
+   - Disable unused features and protocols
+   - Consider alternative lighter-weight libraries where appropriate
 
 ## How to use example
 
@@ -96,7 +137,6 @@ I (2086) esp_netif_handlers: sta ip: 192.168.68.110, mask: 255.255.255.0, gw: 19
 
 For any technical queries, please open an [issue](https://github.com/espressif/esp-idf/issues) on GitHub. We will get back to you soon.
 
-
 ## Dev Notes
 
 ### Download the Root CA certificate for api.openweathermap.org:
@@ -107,7 +147,7 @@ openssl s_client -showcerts -connect api.openweathermap.org:443 </dev/null 2>/de
 Output: openweather_root_ca.pem
 
 This works:
-```
+```bash
 curl "https://api.openweathermap.org/data/2.5/weather?q=Seattle,US&appid=<api_key>&units=metric"
 ```
 Output:
@@ -118,19 +158,19 @@ Output:
 ### Download weather icons given weather icon code
 
 Download large "2x" icons 100x100 pixels:
-```
+```bash
 curl -o weather_icon.png "https://openweathermap.org/img/wn/04d@2x.png"
 ```
 Replace 04d with whatever icon code the API returns.
 
 For the standard 50x50px version:
-```
+```bash
 curl -o weather_icon.png "https://openweathermap.org/img/wn/04d.png"
 ```
 
 To view it immediately on Windows you can chain it with the default image viewer:
-```
-bashcurl -o weather_icon.png "https://openweathermap.org/img/wn/04d@2x.png" && start weather_icon.png
+```bash
+curl -o weather_icon.png "https://openweathermap.org/img/wn/04d@2x.png" && start weather_icon.png
 ```
 
 ### Weather field breakdown
