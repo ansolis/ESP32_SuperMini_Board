@@ -1,0 +1,87 @@
+# CLine Extension Customization Rules for ESP32-S3 Project
+
+## Task Completion Rules
+
+1. **ESP-IDF Tool Execution**:
+   - If calling the commands fails, document the commands that should be run manually for verification.
+
+   - **Environment Setup**: Before running any `idf.py` command, you MUST source the ESP-IDF export script to set up necessary environment variables (e.g., PATH, IDF_PATH).
+     - On Windows (PowerShell): `. $HOME\esp\esp-idf\export.ps1`
+     - On Linux/macOS: `. $HOME/esp/esp-idf/export.sh`
+
+   - **Command Execution**: Always combine the export command with the tool command in a single terminal call to ensure the session maintains the environment.
+     - Example: `. $HOME/esp/esp-idf/export.sh && idf.py build`
+
+   - **Preferred Terminal**: If available, use the "ESP-IDF Terminal" provided by the extension, as it is pre-configured with the correct paths.
+
+   - **Common Tasks**:
+     - To build: `idf.py build`
+     - To flash: `idf.py -p [PORT] flash`
+     - To monitor: `idf.py -p [PORT] monitor`
+
+   - **Target Selection**: Always verify the target chip (e.g., esp32, esp32s3) is selected before building.
+
+   - **Windows-Specific Execution**: On Windows systems, use the full path to idf.py:
+     - Build: `C:\Espressif\SDK\v5.4.1\esp-idf\tools\idf.py build`
+     - Clean: `C:\Espressif\SDK\v5.4.1\esp-idf\tools\idf.py fullclean`
+     - Flash: `C:\Espressif\SDK\v5.4.1\esp-idf\tools\idf.py -p [PORT] flash`
+     - Monitor: `C:\Espressif\SDK\v5.4.1\esp-idf\tools\idf.py -p [PORT] monitor`
+
+   - **ESP-IDF v5.4.1 Specific**: This project uses ESP-IDF v5.4.1 with Python environment located at:
+     - Python: `C:\Espressif\Tools\python_env\idf5.4_py3.11_env\Scripts\python.exe`
+     - Full idf.py path: `C:\Espressif\SDK\v5.4.1\esp-idf\tools\idf.py`
+
+2. **Git Commit Message Generation**:
+   - WHEN a task is completed, generate a Git commit message summarizing the changes
+   - Format: "feat: <brief description of changes>"
+   - Include key files modified and the purpose of changes
+   - Example: "feat: expand app partition from 1MB to 3MB to resolve memory constraints"
+
+3. **SDK Configuration Management**:
+   - NEVER delete sdkconfig file as it contains custom configuration parameters
+   - IF sdkconfig file is missing, run `C:\Espressif\SDK\v5.4.1\esp-idf\tools\idf.py reconfigure` to regenerate it from sdkconfig.default
+   - WHEN sdkconfig needs to be modified, modify sdkconfig directly and not sdkconfig.default
+   - NOTE: sdkconfig.default file is automatically updated with fields from sdkconfig during the build via the sync_sdkconfig.py script
+
+
+## Additional Guidelines
+
+- Document ESP-IDF commands that users should run manually
+- Provide clear verification steps without executing them
+- Focus on file-based changes and configuration updates
+- Include relevant technical details in commit messages
+
+## Build Best Practices
+
+### What to Do Next Time:
+- Always check if sdkconfig was actually updated after running reconfigure
+- Use manual sdkconfig edits when reconfigure fails (following Rule 4)
+- Verify configuration changes before attempting full build
+- Run sync_sdkconfig.py after manual sdkconfig changes to update sdkconfig.default
+
+### What NOT to Do Next Time:
+- Don't assume reconfigure will always work automatically
+- Don't delete sdkconfig file (follows Rule 4)
+- Don't modify sdkconfig.default directly for active configuration changes
+- Don't attempt automated builds without proper environment setup
+
+## Rebuild Best Practices
+
+1. **Configuration First**:
+   - Run reconfigure: `C:\Espressif\SDK\v5.4.1\esp-idf\tools\idf.py reconfigure`
+   - Verify target: `findstr "CONFIG_IDF_TARGET" sdkconfig` (should show correct target)
+   - Manual edit if needed (following Rule 4)
+
+2. **Clean Build**:
+   - Full clean: `C:\Espressif\SDK\v5.4.1\esp-idf\tools\idf.py fullclean`
+   - Fresh build: `C:\Espressif\SDK\v5.4.1\esp-idf\tools\idf.py build`
+
+3. **Verification**:
+   - Review build output for any warnings or errors
+
+## ESP32-S3 Specific Rules
+
+- Assume ESP-IDF v5.4.1 environment
+- Document partition table changes clearly
+- Note memory optimization impacts
+- Reference both immediate fixes and future optimization opportunities
