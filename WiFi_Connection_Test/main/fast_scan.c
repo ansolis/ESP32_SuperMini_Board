@@ -30,6 +30,7 @@
 #include "sntp_time.h"
 #include "weather.h"
 #include "oled.h"
+#include "rgb_led.h"
 
 /* Set the SSID and Password via project configuration, or can set directly here */
 #define DEFAULT_SSID CONFIG_EXAMPLE_WIFI_SSID
@@ -137,10 +138,20 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         trigger_scan_and_show_results();
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        wifi_event_sta_disconnected_t* event = (wifi_event_sta_disconnected_t*) event_data;
+        ESP_LOGE(TAG, "Failed to connect to WiFi: %s, reason: %d", esp_err_to_name(event->reason), event->reason);
+
+        // Set LED to red to indicate WiFi connection failure
+        rgb_led_set_color(RED);
+
+        // Retry connection
         esp_wifi_connect();
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+
+        // Set LED to green to indicate Internet connection
+        rgb_led_set_color(GREEN);
 
         // Print RSSI after getting IP
         print_ap_rssi();
@@ -185,6 +196,17 @@ static void fast_scan(void)
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+
+    // If flashing via JTAG fails, try:
+    // 1. Put a 220 - 470uF capacitor between 3.3V rail and GND.
+    // 2. Switch to UART programming instead of JTAG.
+    // 3. Use esp_wifi_set_max_tx_power() to lower WiFi Tx power:
+    //   Set low power level to avoid catastrophic power usage spikes
+    //   The units are 0.25 dBm steps, so:
+    //     80 = 20 dBm (default maximum)
+    //     40 = 10 dBm (half power, significantly lower TX spikes)
+    //     20 = 5 dBm (very conservative, fine if your router is nearby)
+    // ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(20));
 }
 
 void app_main(void)
@@ -209,6 +231,11 @@ void app_main(void)
     } else {
         ESP_LOGE("OLED", "Failed to initialize OLED display: %s", esp_err_to_name(ret));
     }
+
+    // Initialize RGB LED driver
+    rgb_led_init();
+    // Set LED to blue to indicate initialization
+    rgb_led_set_color(BLUE);
 
     fast_scan();
 }

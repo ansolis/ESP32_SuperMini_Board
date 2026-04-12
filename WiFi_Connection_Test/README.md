@@ -206,3 +206,15 @@ curl -o weather_icon.png "https://openweathermap.org/img/wn/04d@2x.png" && start
   - `id` - OWM's internal city ID
   - `name` - city name as resolved by OWM
   - `cod` - HTTP response code echoed in the JSON body (200 = OK)
+
+## Hardware Specifications
+
+### OLED Display Module
+
+- 0.96-inch OLED.
+- SSD1315 driver chip.
+- Resolution: 128x64 pixels.
+- Top 1/4 (16 rows) is yellow, bottom 3/4 (48 rows) is blue.
+- Comm interface: I2C (400kHz).
+- Supply voltage: 3.3V.
+- 4 buttons (up, down, # and *).

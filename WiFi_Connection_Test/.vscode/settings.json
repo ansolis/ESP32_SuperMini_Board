@@ -14,5 +14,5 @@
     "--query-driver=**",
     "--compile-commands-dir=c:\\Repos\\ESP32_SuperMini\\fast_scan\\build"
   ],
-  "idf.flashType": "JTAG"
+  "idf.flashType": "UART"
 }
